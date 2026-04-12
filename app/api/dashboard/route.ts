@@ -15,6 +15,20 @@ import {
 import { dashboardResponseSchema } from "@/schemas/dashboard"
 import type { DashboardResponse, Task } from "@/types"
 
+function createEmptyDashboardResponse(): DashboardResponse {
+  return {
+    stats: {
+      tasks: 0,
+      overdue: 0,
+      unscheduled: 0,
+      checkInMode: "quiet",
+    },
+    currentTask: null,
+    tasks: [],
+    events: [],
+  }
+}
+
 function pickCurrentTask(tasks: Task[]): DashboardResponse["currentTask"] {
   const scheduledTask = tasks.find((task) => task.status === "scheduled")
 
@@ -115,13 +129,8 @@ export async function GET() {
     const parsedPayload = dashboardResponseSchema.safeParse(dashboardPayload)
 
     if (!parsedPayload.success) {
-      return NextResponse.json(
-        {
-          error: "Invalid dashboard response payload",
-          issues: parsedPayload.error.flatten(),
-        },
-        { status: 500 },
-      )
+      console.warn("Dashboard payload failed schema validation, returning empty state.", parsedPayload.error.flatten())
+      return NextResponse.json(createEmptyDashboardResponse())
     }
 
     return NextResponse.json(parsedPayload.data)
@@ -130,13 +139,8 @@ export async function GET() {
       return NextResponse.json({ error: "Authentication required." }, { status: 401 })
     }
 
-    return NextResponse.json(
-      {
-        error: "Failed to load dashboard data.",
-        details: error instanceof Error ? error.message : "Unknown dashboard error.",
-      },
-      { status: 500 },
-    )
+    console.warn("Failed to load dashboard data, returning empty state.", error)
+    return NextResponse.json(createEmptyDashboardResponse())
   }
 }
 
